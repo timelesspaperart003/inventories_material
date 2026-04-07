@@ -80,22 +80,23 @@ module.exports = async function handler(req, res) {
     const checked = items.filter((i) => i.checked).length;
     const lowStock = items.filter((i) => i.minStock > 0 && i.qty < i.minStock).length;
 
-    // Notion rich_text has a 2000 char limit per block, so we chunk the data
-    const dataStr = JSON.stringify(items.map(i => ({
+    // Only save checked items with minimal fields
+    const checkedItems = items.filter(i => i.checked);
+    const dataStr = JSON.stringify(checkedItems.map(i => ({
       code: i.code,
       name: i.name,
-      category: i.category,
       qty: i.qty,
       minStock: i.minStock,
-      shortage: i.shortage,
-      note: i.note,
-      checked: i.checked,
     })));
 
     // Split into 2000-char chunks for rich_text
     const chunks = [];
     for (let i = 0; i < dataStr.length; i += 2000) {
       chunks.push({ text: { content: dataStr.slice(i, i + 2000) } });
+    }
+    // Ensure at least one chunk
+    if (chunks.length === 0) {
+      chunks.push({ text: { content: "[]" } });
     }
 
     const result = await notion.pages.create({

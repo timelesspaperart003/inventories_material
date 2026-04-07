@@ -450,7 +450,7 @@
   <div class="modal">
     <h3>📸 儲存盤點結果</h3>
     <p>將目前的盤點狀態存為一份快照紀錄。</p>
-    <input type="text" class="modal-input" id="operatorInput" placeholder="盤點人姓名（選填）" style="letter-spacing:normal;">
+    <input type="text" class="modal-input" id="operatorInput" placeholder="盤點人姓名（必填）" style="letter-spacing:normal;">
     <div class="modal-actions">
       <button class="btn" onclick="closeSaveModal()">取消</button>
       <button class="btn btn-accent" id="confirmSaveBtn" onclick="confirmSaveSnapshot()">儲存</button>
@@ -564,7 +564,7 @@
 const API_BASE = '';
 const LIST_KEY = '材料';
 const SUB_CATS = null;
-const MIN_STOCK_PASSWORD = 'mat2026kuo';
+const MIN_STOCK_PASSWORD = 'mat2024';
 
 let items = [];
 let filterLow = false;
@@ -963,6 +963,11 @@ async function confirmSaveSnapshot() {
   btn.textContent = '儲存中…';
 
   const operator = document.getElementById('operatorInput').value.trim();
+  if (!operator) {
+    showToast('請填入盤點人姓名');
+    document.getElementById('operatorInput').focus();
+    return;
+  }
 
   try {
     const res = await api('snapshot', {
@@ -970,7 +975,22 @@ async function confirmSaveSnapshot() {
       body: JSON.stringify({ list: LIST_KEY, items, operator }),
     });
     if (res.success) {
-      showToast(`📸 盤點結果已儲存（${res.checkedItems}/${res.totalItems} 已點）`);
+      showToast(`📸 盤點結果已儲存，正在重置…`);
+      closeSaveModal();
+      // Auto reset after save
+      try {
+        const resetRes = await api('reset', {
+          method: 'POST',
+          body: JSON.stringify({ list: LIST_KEY }),
+        });
+        if (resetRes.success) {
+          items.forEach(i => { i.qty = 0; i.checked = false; });
+          render();
+          showToast(`✅ 已儲存並重置 ${resetRes.total} 筆`);
+        }
+      } catch (e) {
+        showToast('儲存成功，但重置失敗: ' + e.message);
+      }
     } else {
       throw new Error(res.error);
     }
