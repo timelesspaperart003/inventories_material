@@ -28,7 +28,7 @@ function pageToItem(page) {
     shortage: props["缺貨處理方式"]?.select?.name || "",
     note: props["備註"]?.rich_text?.[0]?.plain_text || "",
     qty: props["現有數量"]?.number ?? 0,
-    minStock: props["最底庫存"]?.number ?? 0,
+    minStock: props["最低庫存"]?.number ?? 0,
     checked: props["已點算"]?.checkbox ?? false,
   };
 }
@@ -60,7 +60,7 @@ function itemToProperties(item) {
     props["現有數量"] = { number: item.qty };
   }
   if (item.minStock !== undefined) {
-    props["最底庫存"] = { number: item.minStock };
+    props["最低庫存"] = { number: item.minStock };
   }
   if (item.checked !== undefined) {
     props["已點算"] = { checkbox: item.checked };
