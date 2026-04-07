@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代工 ∕ 植物 ∕ 動物 — 材料點算清單</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --accent: #9B8EA6;
+    --accent-light: #EDE8F0;
+    --accent-dark: #7A6E88;
+    --bg: #F5F2EE;
+    --card-bg: #FFFFFF;
+    --text: #3D3D3D;
+    --text-light: #8A8A8A;
+    --border: #E2DDD7;
+    --danger: #C47D7D;
+    --danger-light: #F5E6E6;
+    --success: #8D9B6A;
+    --success-light: #EDF2E4;
+    --warn: #C9A96E;
+    --warn-light: #F8F0E0;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: linear-gradient(135deg, #9B8EA6, #7A6E88);
+    color: white;
+    padding: 28px 24px 22px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .sync-indicator:hover { background: rgba(255,255,255,0.3); }
+  .sync-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #6fdb6f;
+    transition: background .3s;
+  }
+  .sync-dot.syncing { background: #f0c040; animation: pulse 1s infinite; }
+  .sync-dot.error { background: #e06060; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  .header-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    opacity: 0.9;
+    flex-wrap: wrap;
+  }
+  .header-stats span {
+    background: rgba(255,255,255,0.18);
+    padding: 3px 10px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ===== TOOLBAR ===== */
+  .toolbar {
+    background: var(--card-bg);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 99;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 180px;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 9px 14px 9px 36px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--bg);
+    transition: border-color .2s, box-shadow .2s;
+    outline: none;
+  }
+  .search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px #EDE8F0;
+  }
+  .search-box svg {
+    position: absolute; left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light); width: 16px; height: 16px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-dark); }
+  .btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent-dark); }
+  .btn-accent { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-accent:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: white; }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn-danger:hover { background: var(--danger-light); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ===== LOADING OVERLAY ===== */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(245,242,238,0.85);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px;
+    z-index: 500;
+    backdrop-filter: blur(3px);
+  }
+  .loading-overlay.hidden { display: none; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; color: var(--text-light); font-weight: 500; }
+
+  /* ===== SUB TABS ===== */
+  .sub-tabs {
+    display: flex; gap: 6px; padding: 10px 20px;
+    background: var(--card-bg); border-bottom: 1px solid var(--border);
+  }
+  .sub-tab {
+    padding: 6px 16px; border-radius: 20px; font-size: 13px;
+    font-weight: 500; cursor: pointer; border: 1.5px solid var(--border);
+    background: transparent; font-family: inherit; transition: all .2s;
+  }
+  .sub-tab:hover { border-color: var(--accent); }
+  .sub-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ===== TABLE ===== */
+  .table-wrap { padding: 16px 12px; }
+  table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--card-bg); border-radius: var(--radius);
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  thead th {
+    background: var(--accent-light); font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-dark);
+    padding: 12px 10px; text-align: left;
+    border-bottom: 2px solid var(--accent);
+    position: sticky; top: 0; white-space: nowrap; user-select: none;
+  }
+  thead th.center { text-align: center; }
+
+  tbody tr { transition: background .15s; }
+  tbody tr:hover { background: #FAFAF7; }
+  tbody tr.checked-row { background: var(--success-light); }
+  tbody tr.low-stock { background: var(--danger-light); }
+  tbody tr.low-stock.checked-row { background: #E8EBDF; }
+  tbody td {
+    padding: 10px 10px; font-size: 14px;
+    border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .code-cell { font-weight: 600; color: var(--accent-dark); font-size: 13px; white-space: nowrap; }
+  .name-cell { font-weight: 500; }
+  .category-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 11px; font-weight: 600;
+    background: var(--accent-light); color: var(--accent-dark);
+    margin-left: 6px;
+  }
+
+  .num-input {
+    width: 64px; padding: 5px 6px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit; text-align: center;
+    background: var(--bg); transition: border-color .2s, box-shadow .2s; outline: none;
+  }
+  .num-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #EDE8F0; }
+  .min-stock-input { background: var(--card-bg); border-style: dashed; }
+  .min-stock-input:focus { border-style: solid; }
+
+  .shortage-select {
+    padding: 4px 6px; border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 13px; font-family: inherit;
+    background: var(--card-bg); outline: none; cursor: pointer; min-width: 70px;
+  }
+  .shortage-select:focus { border-color: var(--accent); }
+
+  .note-input {
+    width: 100%; min-width: 80px; padding: 5px 8px;
+    border: 1.5px solid transparent; border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit;
+    background: transparent; transition: all .2s; outline: none;
+  }
+  .note-input:hover { border-color: var(--border); background: var(--bg); }
+  .note-input:focus { border-color: var(--accent); background: var(--card-bg); box-shadow: 0 0 0 2px #EDE8F0; }
+
+  .check-cell { text-align: center; }
+  .custom-check {
+    width: 22px; height: 22px;
+    border: 2px solid var(--border); border-radius: 6px;
+    cursor: pointer; display: inline-flex;
+    align-items: center; justify-content: center;
+    transition: all .2s; background: var(--card-bg);
+  }
+  .custom-check:hover { border-color: var(--accent); }
+  .custom-check.checked { background: var(--accent); border-color: var(--accent); }
+  .custom-check.checked svg { display: block; }
+  .custom-check svg { display: none; color: white; width: 14px; height: 14px; }
+
+  .stock-warn {
+    display: inline-flex; align-items: center; gap: 3px;
+    color: var(--danger); font-size: 11px; font-weight: 600;
+  }
+
+  /* ===== ADD PANEL ===== */
+  .add-panel {
+    background: var(--card-bg); margin: 0 12px 16px;
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .add-panel-header {
+    padding: 12px 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 600; font-size: 14px; color: var(--accent-dark);
+    background: var(--accent-light); user-select: none;
+  }
+  .add-panel-body { padding: 16px; display: none; border-top: 1px solid var(--border); }
+  .add-panel-body.open { display: block; }
+  .add-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .add-form label { font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 4px; display: block; }
+  .add-form input, .add-form select {
+    width: 100%; padding: 8px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit; outline: none;
+  }
+  .add-form input:focus, .add-form select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #EDE8F0; }
+  .add-form .full-width { grid-column: 1 / -1; }
+  .add-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  /* ===== EMPTY ===== */
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-light); }
+  .empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.4; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: white;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    transition: transform .3s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 1000; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35); z-index: 200;
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 28px; max-width: 380px; width: 90%;
+    box-shadow: var(--shadow-lg); text-align: center;
+  }
+  .modal h3 { margin-bottom: 8px; font-size: 18px; }
+  .modal p { color: var(--text-light); font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+  .footer { text-align: center; padding: 20px; font-size: 12px; color: var(--text-light); }
+
+  @media (max-width: 768px) {
+    .header { padding: 20px 16px 16px; }
+    .header h1 { font-size: 18px; }
+    .toolbar { padding: 10px 12px; }
+    .table-wrap { padding: 10px 8px; }
+    .add-form { grid-template-columns: 1fr; }
+    thead th, tbody td { padding: 8px 6px; font-size: 13px; }
+    .num-input { width: 52px; font-size: 13px; }
+    .shortage-select { font-size: 12px; min-width: 60px; }
+    .header-stats { gap: 8px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">正在從 Notion 載入資料…</div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <h1>🔧 代工 ∕ 植物 ∕ 動物</h1>
+    <div class="sync-indicator" onclick="syncFromNotion()" title="點擊重新同步">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">已同步</span>
+    </div>
+  </div>
+  <div class="header-stats">
+    <span id="stat-total">總計: 0</span>
+    <span id="stat-checked">已點: 0</span>
+    <span id="stat-low">低庫存: 0</span>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="search-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="搜尋編號或名稱…">
+  </div>
+  <button class="btn" id="filterLowBtn" onclick="toggleLowFilter()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    低庫存
+  </button>
+  <button class="btn" onclick="syncFromNotion()" title="從 Notion 重新拉取">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+    同步
+  </button>
+  <button class="btn btn-danger" onclick="showResetModal()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+    重置
+  </button>
+</div>
+
+<!-- SUB TABS -->
+<div class="sub-tabs" id="subTabs" style="display:none;"></div>
+
+<!-- ADD ITEM -->
+<div class="table-wrap" style="padding-bottom:0;">
+  <div class="add-panel">
+    <div class="add-panel-header" onclick="toggleAddPanel()">
+      <span>＋ 新增品項</span>
+      <svg id="addArrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="add-panel-body" id="addPanelBody">
+      <div class="add-form">
+        <div>
+          <label>編號 *</label>
+          <input type="text" id="addCode" placeholder="例: A999">
+        </div>
+        <div>
+          <label>名稱 *</label>
+          <input type="text" id="addName" placeholder="品項名稱">
+        </div>
+        <div>
+          <label>缺貨處理方式</label>
+          <select id="addShortage">
+            <option value="叫貨">叫貨</option>
+            <option value="南灣">南灣</option>
+            <option value="更換">更換</option>
+            <option value="">無</option>
+          </select>
+        </div>
+        <div>
+          <label>最低庫存</label>
+          <input type="number" id="addMinStock" min="0" value="0">
+        </div>
+        <div class="full-width">
+          <label>備註</label>
+          <input type="text" id="addNote" placeholder="選填">
+        </div>
+        <div class="add-actions">
+          <button class="btn" onclick="clearAddForm()">清除</button>
+          <button class="btn btn-accent" id="addBtn" onclick="addItem()">新增到 Notion</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="center" style="width:44px;">✓</th>
+        <th>編號</th>
+        <th>名稱</th>
+        <th class="center">現有數量</th>
+        <th class="center">最低庫存</th>
+        <th>缺貨處理</th>
+        <th>備註</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="empty-state" id="emptyState" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <p>找不到符合的品項</p>
+  </div>
+</div>
+
+<!-- RESET MODAL -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>確認重置</h3>
+    <p>將清除所有點算勾選與現有數量，<br>最低庫存與備註將保留。<br>此操作會同步寫入 Notion，無法復原。</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeResetModal()">取消</button>
+      <button class="btn btn-danger" id="resetBtn" onclick="resetAll()">確認重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<div class="footer">
+  代工 ∕ 植物 ∕ 動物 點算清單 — Notion 雙向同步版
+</div>
+
+<script>
+// ===== CONFIG =====
+const API_BASE = '';  // same origin on Vercel, or set full URL
+const LIST_KEY = '代工_植物_動物';
+const SUB_CATS = ["代工", "植物", "動物"];
+
+let items = [];
+let filterLow = false;
+let searchTerm = '';
+let activeSubCat = 'all';
+let updateQueue = new Map(); // debounce updates
+let updateTimers = new Map();
+
+// ===== API HELPERS =====
+async function api(endpoint, options = {}) {
+  const res = await fetch(API_BASE + '/api/' + endpoint, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  return res.json();
+}
+
+function setSyncStatus(status, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot' + (status === 'syncing' ? ' syncing' : status === 'error' ? ' error' : '');
+  lbl.textContent = label || (status === 'syncing' ? '同步中…' : status === 'error' ? '同步失敗' : '已同步');
+}
+
+// ===== INIT: Load from Notion =====
+async function init() {
+  // Setup sub-tabs
+  if (SUB_CATS) {
+    const tabsEl = document.getElementById('subTabs');
+    tabsEl.style.display = 'flex';
+    let html = '<button class="sub-tab active" onclick="setSubCat('all')">全部</button>';
+    SUB_CATS.forEach(c => { html += `<button class="sub-tab" onclick="setSubCat('${c}')">${c}</button>`; });
+    tabsEl.innerHTML = html;
+  }
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    render();
+  });
+
+  await syncFromNotion();
+}
+
+async function syncFromNotion() {
+  setSyncStatus('syncing');
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.remove('hidden');
+
+  try {
+    const data = await api('items?list=' + LIST_KEY);
+    if (data.success) {
+      items = data.items;
+      setSyncStatus('ok', `已同步 · ${items.length} 筆`);
+      render();
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    console.error('Sync failed:', err);
+    setSyncStatus('error', '載入失敗');
+    showToast('無法連接 Notion，請檢查網路或設定');
+  } finally {
+    overlay.classList.add('hidden');
+  }
+}
+
+// ===== DEBOUNCED UPDATE TO NOTION =====
+function scheduleUpdate(pageId, field, value) {
+  const key = pageId;
+  if (!updateQueue.has(key)) updateQueue.set(key, {});
+  updateQueue.get(key)[field] = value;
+
+  if (updateTimers.has(key)) clearTimeout(updateTimers.get(key));
+  updateTimers.set(key, setTimeout(() => flushUpdate(key), 600));
+}
+
+async function flushUpdate(key) {
+  const updates = updateQueue.get(key);
+  updateQueue.delete(key);
+  updateTimers.delete(key);
+
+  setSyncStatus('syncing');
+  try {
+    const res = await api('update', {
+      method: 'PATCH',
+      body: JSON.stringify({ pageId: key, updates }),
+    });
+    if (!res.success) throw new Error(res.error);
+    setSyncStatus('ok');
+  } catch (err) {
+    console.error('Update failed:', err);
+    setSyncStatus('error');
+    showToast('同步失敗: ' + (err.message || '未知錯誤'));
+  }
+}
+
+// ===== RENDER =====
+function render() {
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+
+  let filtered = items.filter(item => {
+    if (searchTerm && !item.code.toLowerCase().includes(searchTerm) && !item.name.toLowerCase().includes(searchTerm)) return false;
+    if (filterLow && !(item.minStock > 0 && item.qty < item.minStock)) return false;
+    if (SUB_CATS && activeSubCat !== 'all' && item.category !== activeSubCat) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    tbody.innerHTML = filtered.map(item => {
+      const idx = items.indexOf(item);
+      const isLow = item.minStock > 0 && item.qty < item.minStock;
+      const rc = [item.checked ? 'checked-row' : '', isLow && !item.checked ? 'low-stock' : ''].filter(Boolean).join(' ');
+
+      return `<tr class="${rc}">
+        <td class="check-cell">
+          <div class="custom-check ${item.checked?'checked':''}" onclick="toggleCheck(${idx})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </td>
+        <td class="code-cell">${esc(item.code)}</td>
+        <td class="name-cell">
+          ${esc(item.name)}
+          ${SUB_CATS ? `<span class="category-badge">${esc(item.category)}</span>` : ''}
+        </td>
+        <td class="center">
+          <input type="number" class="num-input" min="0" value="${item.qty}" onchange="setQty(${idx},this.value)">
+        </td>
+        <td class="center">
+          <input type="number" class="num-input min-stock-input" min="0" value="${item.minStock}" onchange="setMinStock(${idx},this.value)">
+          ${isLow ? '<div class="stock-warn">⚠ 低於安全量</div>' : ''}
+        </td>
+        <td>
+          <select class="shortage-select" onchange="setShortage(${idx},this.value)">
+            <option value="" ${item.shortage===''?'selected':''}>—</option>
+            <option value="叫貨" ${item.shortage==='叫貨'?'selected':''}>叫貨</option>
+            <option value="南灣" ${item.shortage==='南灣'?'selected':''}>南灣</option>
+            <option value="更換" ${item.shortage==='更換'?'selected':''}>更換</option>
+          </select>
+        </td>
+        <td>
+          <input type="text" class="note-input" value="${esc(item.note)}" placeholder="—" onchange="setNote(${idx},this.value)">
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  updateStats();
+}
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// ===== ACTIONS (local + sync to Notion) =====
+function toggleCheck(idx) {
+  items[idx].checked = !items[idx].checked;
+  scheduleUpdate(items[idx].id, 'checked', items[idx].checked);
+  render();
+}
+
+function setQty(idx, val) {
+  items[idx].qty = Math.max(0, parseInt(val)||0);
+  scheduleUpdate(items[idx].id, 'qty', items[idx].qty);
+  render();
+}
+
+function setMinStock(idx, val) {
+  items[idx].minStock = Math.max(0, parseInt(val)||0);
+  scheduleUpdate(items[idx].id, 'minStock', items[idx].minStock);
+  render();
+}
+
+function setShortage(idx, val) {
+  items[idx].shortage = val;
+  scheduleUpdate(items[idx].id, 'shortage', val);
+}
+
+function setNote(idx, val) {
+  items[idx].note = val;
+  scheduleUpdate(items[idx].id, 'note', val);
+}
+
+function toggleLowFilter() {
+  filterLow = !filterLow;
+  document.getElementById('filterLowBtn').classList.toggle('active', filterLow);
+  render();
+}
+
+function setSubCat(cat) {
+  activeSubCat = cat;
+  document.querySelectorAll('.sub-tab').forEach(t => {
+    t.classList.toggle('active', t.textContent === (cat==='all'?'全部':cat));
+  });
+  render();
+}
+
+function updateStats() {
+  const total = items.length;
+  const checked = items.filter(i=>i.checked).length;
+  const low = items.filter(i=>i.minStock>0 && i.qty<i.minStock).length;
+  document.getElementById('stat-total').textContent = `總計: ${total}`;
+  document.getElementById('stat-checked').textContent = `已點: ${checked} / ${total}`;
+  document.getElementById('stat-low').textContent = `低庫存: ${low}`;
+}
+
+// ===== ADD ITEM (create in Notion) =====
+function toggleAddPanel() {
+  const body = document.getElementById('addPanelBody');
+  const arrow = document.getElementById('addArrow');
+  const isOpen = body.classList.toggle('open');
+  arrow.style.transform = isOpen ? 'rotate(180deg)' : '';
+}
+
+async function addItem() {
+  const code = document.getElementById('addCode').value.trim();
+  const name = document.getElementById('addName').value.trim();
+  if (!code || !name) { showToast('請填入編號和名稱'); return; }
+  if (items.some(i => i.code === code)) { showToast('此編號已存在'); return; }
+
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  btn.textContent = '新增中…';
+
+  const newItem = {
+    code, name,
+    category: SUB_CATS ? SUB_CATS[0] : '代工',
+    shortage: document.getElementById('addShortage').value,
+    minStock: parseInt(document.getElementById('addMinStock').value) || 0,
+    note: document.getElementById('addNote').value.trim(),
+    qty: 0,
+    checked: false,
+  };
+
+  try {
+    const res = await api('create', {
+      method: 'POST',
+      body: JSON.stringify({ list: LIST_KEY, item: newItem }),
+    });
+    if (res.success) {
+      items.push(res.item);
+      render();
+      clearAddForm();
+      showToast(`已新增 ${code} ${name} 到 Notion`);
+    } else {
+      throw new Error(res.error);
+    }
+  } catch (err) {
+    showToast('新增失敗: ' + (err.message || '未知錯誤'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '新增到 Notion';
+  }
+}
+
+function clearAddForm() {
+  document.getElementById('addCode').value = '';
+  document.getElementById('addName').value = '';
+  document.getElementById('addMinStock').value = '0';
+  document.getElementById('addNote').value = '';
+}
+
+// ===== RESET (batch update in Notion) =====
+function showResetModal() { document.getElementById('resetModal').classList.add('open'); }
+function closeResetModal() { document.getElementById('resetModal').classList.remove('open'); }
+
+async function resetAll() {
+  const btn = document.getElementById('resetBtn');
+  btn.disabled = true;
+  btn.textContent = '重置中…';
+
+  try {
+    const res = await api('reset', {
+      method: 'POST',
+      body: JSON.stringify({ list: LIST_KEY }),
+    });
+    if (res.success) {
+      items.forEach(i => { i.qty = 0; i.checked = false; });
+      render();
+      showToast(`已重置 ${res.total} 筆，同步至 Notion`);
+    } else {
+      throw new Error(res.error);
+    }
+  } catch (err) {
+    showToast('重置失敗: ' + (err.message || '未知錯誤'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '確認重置';
+    closeResetModal();
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== AUTO REFRESH (poll Notion every 60s) =====
+setInterval(async () => {
+  if (updateQueue.size > 0) return; // skip if pending writes
+  try {
+    const data = await api('items?list=' + LIST_KEY);
+    if (data.success) {
+      items = data.items;
+      render();
+      setSyncStatus('ok', `已同步 · ${items.length} 筆`);
+    }
+  } catch(e) {}
+}, 60000);
+
+// ===== GO =====
+init();
+</script>
+</body>
+</html>
