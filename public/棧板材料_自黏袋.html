@@ -513,9 +513,13 @@ async function init() {
   if (SUB_CATS) {
     const tabsEl = document.getElementById('subTabs');
     tabsEl.style.display = 'flex';
-    let html = '<button class="sub-tab active" onclick="setSubCat('all')">全部</button>';
-    SUB_CATS.forEach(c => { html += `<button class="sub-tab" onclick="setSubCat('${c}')">${c}</button>`; });
+    let html = '<button class="sub-tab active" data-cat="all">全部</button>';
+    SUB_CATS.forEach(c => { html += `<button class="sub-tab" data-cat="${c}">${c}</button>`; });
     tabsEl.innerHTML = html;
+    tabsEl.addEventListener('click', e => {
+      const btn = e.target.closest('[data-cat]');
+      if (btn) setSubCat(btn.dataset.cat);
+    });
   }
 
   document.getElementById('searchInput').addEventListener('input', e => {
@@ -676,7 +680,7 @@ function toggleLowFilter() {
 function setSubCat(cat) {
   activeSubCat = cat;
   document.querySelectorAll('.sub-tab').forEach(t => {
-    t.classList.toggle('active', t.textContent === (cat==='all'?'全部':cat));
+    t.classList.toggle('active', t.dataset.cat === cat);
   });
   render();
 }
