@@ -1,9 +1,0 @@
-{
-  "name": "notion-inventory-sync",
-  "version": "1.0.0",
-  "description": "材料點算清單 — Notion 雙向同步",
-  "private": true,
-  "dependencies": {
-    "@notionhq/client": "^2.2.15"
-  }
-}
