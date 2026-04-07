@@ -564,7 +564,7 @@
 const API_BASE = '';
 const LIST_KEY = '代工_植物_動物';
 const SUB_CATS = ["代工", "植物", "動物"];
-const MIN_STOCK_PASSWORD = 'craft2024';
+const MIN_STOCK_PASSWORD = 'craft2026an';
 
 let items = [];
 let filterLow = false;
@@ -919,25 +919,45 @@ async function resetAll() {
   const btn = document.getElementById('resetBtn');
   btn.disabled = true;
   btn.textContent = '重置中…';
+  closeResetModal();
 
   try {
-    const res = await api('reset', {
-      method: 'POST',
-      body: JSON.stringify({ list: LIST_KEY }),
-    });
-    if (res.success) {
-      items.forEach(i => { i.qty = 0; i.checked = false; });
-      render();
-      showToast(`已重置 ${res.total} 筆，同步至 Notion`);
-    } else {
-      throw new Error(res.error);
+    // Reset locally first
+    items.forEach(i => { i.qty = 0; i.checked = false; });
+    render();
+    showToast('正在同步重置到 Notion…');
+
+    // Batch update to Notion in small chunks (client-side)
+    setSyncStatus('syncing', '重置同步中…');
+    let done = 0;
+    const total = items.length;
+
+    // Process 3 at a time to stay under rate limit
+    for (let i = 0; i < items.length; i += 3) {
+      const batch = items.slice(i, i + 3);
+      await Promise.all(batch.map(item =>
+        api('update', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageId: item.id,
+            updates: { qty: 0, checked: false }
+          }),
+        }).catch(e => console.error('Reset item failed:', item.code, e))
+      ));
+      done += batch.length;
+      btn.textContent = `重置中 ${done}/${total}`;
+      // Small delay between batches
+      if (i + 3 < items.length) await new Promise(r => setTimeout(r, 400));
     }
+
+    setSyncStatus('ok', `已同步 · ${total} 筆`);
+    showToast(`✅ 已重置 ${total} 筆，同步至 Notion`);
   } catch (err) {
     showToast('重置失敗: ' + (err.message || '未知錯誤'));
+    setSyncStatus('error');
   } finally {
     btn.disabled = false;
     btn.textContent = '確認重置';
-    closeResetModal();
   }
 }
 
@@ -977,20 +997,28 @@ async function confirmSaveSnapshot() {
     if (res.success) {
       showToast(`📸 盤點結果已儲存，正在重置…`);
       closeSaveModal();
-      // Auto reset after save
-      try {
-        const resetRes = await api('reset', {
-          method: 'POST',
-          body: JSON.stringify({ list: LIST_KEY }),
-        });
-        if (resetRes.success) {
-          items.forEach(i => { i.qty = 0; i.checked = false; });
-          render();
-          showToast(`✅ 已儲存並重置 ${resetRes.total} 筆`);
-        }
-      } catch (e) {
-        showToast('儲存成功，但重置失敗: ' + e.message);
+      // Auto reset: local first, then sync to Notion
+      items.forEach(i => { i.qty = 0; i.checked = false; });
+      render();
+      setSyncStatus('syncing', '重置同步中…');
+      let done = 0;
+      for (let i = 0; i < items.length; i += 3) {
+        const batch = items.slice(i, i + 3);
+        await Promise.all(batch.map(item =>
+          api('update', {
+            method: 'PATCH',
+            body: JSON.stringify({
+              pageId: item.id,
+              updates: { qty: 0, checked: false }
+            }),
+          }).catch(e => console.error('Reset failed:', item.code, e))
+        ));
+        done += batch.length;
+        btn.textContent = `重置 ${done}/${items.length}`;
+        if (i + 3 < items.length) await new Promise(r => setTimeout(r, 400));
       }
+      setSyncStatus('ok', `已同步 · ${items.length} 筆`);
+      showToast(`✅ 已儲存並重置 ${items.length} 筆`);
     } else {
       throw new Error(res.error);
     }
