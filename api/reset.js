@@ -25,7 +25,6 @@ module.exports = async function handler(req, res) {
     const updates = pages.map((page) => ({
       id: page.id,
       properties: {
-        "現有數量": { number: 0 },
         "已點算": { checkbox: false },
       },
     }));

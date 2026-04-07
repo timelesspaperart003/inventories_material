@@ -530,7 +530,7 @@
 <div class="modal-overlay" id="resetModal">
   <div class="modal">
     <h3>確認重置</h3>
-    <p>將清除所有點算勾選與現有數量，<br>最低庫存與備註將保留。<br>此操作會同步寫入 Notion，無法復原。</p>
+    <p>將清除所有點算勾選。<br>現有數量與最低庫存不受影響。<br>此操作會同步寫入 Notion，無法復原。</p>
     <div class="modal-actions">
       <button class="btn" onclick="closeResetModal()">取消</button>
       <button class="btn btn-danger" id="resetBtn" onclick="resetAll()">確認重置</button>
@@ -722,7 +722,7 @@ function render() {
       const isLow = item.minStock > 0 && item.qty < item.minStock;
       const rc = [item.checked ? 'checked-row' : '', isLow && !item.checked ? 'low-stock' : ''].filter(Boolean).join(' ');
 
-      return `<tr class="${rc}">
+      return `<tr class="${rc}" data-idx="${idx}">
         <td class="check-cell">
           <div class="custom-check ${item.checked?'checked':''}" onclick="toggleCheck(${idx})">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -734,14 +734,14 @@ function render() {
           ${SUB_CATS ? `<span class="category-badge">${esc(item.category)}</span>` : ''}
         </td>
         <td class="center">
-          <input type="number" class="num-input" min="0" value="${item.qty}" onchange="setQty(${idx},this.value)">
+          <input type="number" class="num-input" min="0" value="${item.qty}" onblur="setQty(${idx},this.value)">
         </td>
         <td class="center">
           <div class="min-stock-display" onclick="requestMinStockEdit(${idx})">
             ${item.minStock}
             <span class="lock-icon">${minStockUnlocked ? '🔓' : '🔒'}</span>
           </div>
-          ${isLow ? '<div class="stock-warn">⚠ 低於安全量</div>' : ''}
+          <span class="stock-warn-wrap">${isLow ? '<div class="stock-warn">⚠ 低於安全量</div>' : ''}</span>
         </td>
         <td>
           <select class="shortage-select" onchange="setShortage(${idx},this.value)">
@@ -752,7 +752,7 @@ function render() {
           </select>
         </td>
         <td>
-          <input type="text" class="note-input" value="${esc(item.note)}" placeholder="—" onchange="setNote(${idx},this.value)">
+          <input type="text" class="note-input" value="${esc(item.note)}" placeholder="—" onblur="setNote(${idx},this.value)">
         </td>
       </tr>`;
     }).join('');
@@ -766,13 +766,24 @@ function esc(s) { const d=document.createElement('div'); d.textContent=s||''; re
 function toggleCheck(idx) {
   items[idx].checked = !items[idx].checked;
   scheduleUpdate(items[idx].id, 'checked', items[idx].checked);
+  // Only update the row visually, don't full re-render (avoids onchange conflicts)
   render();
 }
 
 function setQty(idx, val) {
-  items[idx].qty = Math.max(0, parseInt(val)||0);
+  const newVal = Math.max(0, parseInt(val)||0);
+  if (items[idx].qty === newVal) return; // no change, skip
+  items[idx].qty = newVal;
   scheduleUpdate(items[idx].id, 'qty', items[idx].qty);
-  render();
+  updateStats();
+  // Update row class without full re-render
+  const isLow = items[idx].minStock > 0 && items[idx].qty < items[idx].minStock;
+  const row = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (row) {
+    row.classList.toggle('low-stock', isLow && !items[idx].checked);
+    const warnEl = row.querySelector('.stock-warn-wrap');
+    if (warnEl) warnEl.innerHTML = isLow ? '<div class="stock-warn">⚠ 低於安全量</div>' : '';
+  }
 }
 
 function setMinStock(idx, val) {
@@ -927,8 +938,8 @@ async function resetAll() {
     updateTimers.forEach(t => clearTimeout(t));
     updateTimers.clear();
 
-    // Reset locally first (preserve minStock)
-    items.forEach(i => { i.qty = 0; i.checked = false; });
+    // Reset locally: only clear checked (preserve qty and minStock)
+    items.forEach(i => { i.checked = false; });
     render();
     showToast('正在同步重置到 Notion…');
 
@@ -943,7 +954,7 @@ async function resetAll() {
           method: 'PATCH',
           body: JSON.stringify({
             pageId: item.id,
-            updates: { qty: 0, checked: false }
+            updates: { checked: false }
           }),
         }).catch(e => console.error('Reset item failed:', item.code, e))
       ));
@@ -1003,8 +1014,8 @@ async function confirmSaveSnapshot() {
       updateQueue.clear();
       updateTimers.forEach(t => clearTimeout(t));
       updateTimers.clear();
-      // Auto reset: local first (preserve minStock), then sync
-      items.forEach(i => { i.qty = 0; i.checked = false; });
+      // Auto reset: only clear checked (preserve qty and minStock)
+      items.forEach(i => { i.checked = false; });
       render();
       setSyncStatus('syncing', '重置同步中…');
       let done = 0;
@@ -1015,7 +1026,7 @@ async function confirmSaveSnapshot() {
             method: 'PATCH',
             body: JSON.stringify({
               pageId: item.id,
-              updates: { qty: 0, checked: false }
+              updates: { checked: false }
             }),
           }).catch(e => console.error('Reset failed:', item.code, e))
         ));
