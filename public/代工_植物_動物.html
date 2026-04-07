@@ -922,17 +922,20 @@ async function resetAll() {
   closeResetModal();
 
   try {
-    // Reset locally first
+    // Clear any pending updates to prevent stale data being sent
+    updateQueue.clear();
+    updateTimers.forEach(t => clearTimeout(t));
+    updateTimers.clear();
+
+    // Reset locally first (preserve minStock)
     items.forEach(i => { i.qty = 0; i.checked = false; });
     render();
     showToast('正在同步重置到 Notion…');
 
-    // Batch update to Notion in small chunks (client-side)
     setSyncStatus('syncing', '重置同步中…');
     let done = 0;
     const total = items.length;
 
-    // Process 3 at a time to stay under rate limit
     for (let i = 0; i < items.length; i += 3) {
       const batch = items.slice(i, i + 3);
       await Promise.all(batch.map(item =>
@@ -946,7 +949,6 @@ async function resetAll() {
       ));
       done += batch.length;
       btn.textContent = `重置中 ${done}/${total}`;
-      // Small delay between batches
       if (i + 3 < items.length) await new Promise(r => setTimeout(r, 400));
     }
 
@@ -997,7 +999,11 @@ async function confirmSaveSnapshot() {
     if (res.success) {
       showToast(`📸 盤點結果已儲存，正在重置…`);
       closeSaveModal();
-      // Auto reset: local first, then sync to Notion
+      // Clear pending updates
+      updateQueue.clear();
+      updateTimers.forEach(t => clearTimeout(t));
+      updateTimers.clear();
+      // Auto reset: local first (preserve minStock), then sync
       items.forEach(i => { i.qty = 0; i.checked = false; });
       render();
       setSyncStatus('syncing', '重置同步中…');
