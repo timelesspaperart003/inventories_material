@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>後台管理 — 材料點算系統</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --accent: #5C6B73;
+    --accent-light: #E8EBEE;
+    --accent-dark: #3D4A52;
+    --bg: #F5F2EE;
+    --card-bg: #FFFFFF;
+    --text: #3D3D3D;
+    --text-light: #8A8A8A;
+    --border: #E2DDD7;
+    --danger: #C47D7D;
+    --danger-light: #F5E6E6;
+    --success: #8D9B6A;
+    --success-light: #EDF2E4;
+    --warn: #C9A96E;
+    --warn-light: #F8F0E0;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== LOGIN ===== */
+  .login-screen {
+    min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; padding: 24px;
+  }
+  .login-card {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 40px 32px; max-width: 360px; width: 100%;
+    box-shadow: var(--shadow-lg); text-align: center;
+  }
+  .login-card h1 { font-size: 24px; margin-bottom: 8px; }
+  .login-card p { color: var(--text-light); font-size: 14px; margin-bottom: 24px; }
+  .login-input {
+    width: 100%; padding: 12px 16px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-size: 16px; font-family: inherit; text-align: center;
+    outline: none; letter-spacing: 2px; margin-bottom: 8px;
+  }
+  .login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+  .login-error { color: var(--danger); font-size: 13px; margin-bottom: 12px; display: none; }
+  .login-btn {
+    width: 100%; padding: 12px; border: none; border-radius: var(--radius);
+    background: var(--accent); color: white; font-size: 15px;
+    font-family: inherit; font-weight: 600; cursor: pointer;
+    transition: background .2s;
+  }
+  .login-btn:hover { background: var(--accent-dark); }
+
+  /* ===== DASHBOARD ===== */
+  .dashboard { display: none; }
+  .dashboard.show { display: block; }
+
+  .header {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; padding: 24px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .header-row { display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 22px; font-weight: 700; }
+  .header-date { font-size: 14px; opacity: 0.9; }
+  .header-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+  .btn {
+    padding: 8px 14px; border: 1.5px solid rgba(255,255,255,0.3);
+    border-radius: var(--radius); background: rgba(255,255,255,0.15);
+    font-size: 13px; font-family: inherit; font-weight: 500;
+    cursor: pointer; transition: all .2s; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px; color: white;
+  }
+  .btn:hover { background: rgba(255,255,255,0.25); }
+  .btn-solid {
+    background: var(--card-bg); color: var(--text);
+    border: 1.5px solid var(--border);
+  }
+  .btn-solid:hover { border-color: var(--accent); color: var(--accent-dark); }
+  .btn-accent { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-accent:hover { background: var(--accent-dark); }
+  .btn-danger { color: var(--danger); border-color: var(--danger); background: var(--card-bg); }
+
+  /* ===== TABS ===== */
+  .tabs {
+    display: flex; gap: 0; background: var(--card-bg);
+    border-bottom: 2px solid var(--border); overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 24px; font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; background: none; font-family: inherit;
+    color: var(--text-light); border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all .2s; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent-dark); border-bottom-color: var(--accent); font-weight: 600; }
+
+  /* ===== CONTENT ===== */
+  .content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ===== CARDS ===== */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 20px; box-shadow: var(--shadow);
+  }
+  .stat-card .label { font-size: 12px; color: var(--text-light); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat-card .sub { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .stat-card.danger .value { color: var(--danger); }
+  .stat-card.success .value { color: var(--success); }
+  .stat-card.warn .value { color: var(--warn); }
+
+  /* ===== SNAPSHOT LIST ===== */
+  .snapshot-list { display: flex; flex-direction: column; gap: 12px; }
+  .snapshot-card {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 16px 20px; box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 16px;
+    transition: box-shadow .2s;
+  }
+  .snapshot-card:hover { box-shadow: var(--shadow-lg); }
+  .snapshot-meta { flex: 1; }
+  .snapshot-meta .date { font-weight: 600; font-size: 15px; }
+  .snapshot-meta .info { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+  .snapshot-badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .snapshot-actions { display: flex; gap: 6px; }
+  .snapshot-actions .btn-solid { padding: 6px 10px; font-size: 12px; }
+
+  /* ===== COMPARE ===== */
+  .compare-selectors {
+    display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: end;
+  }
+  .compare-selectors label { font-size: 12px; font-weight: 600; color: var(--text-light); display: block; margin-bottom: 4px; }
+  .compare-selectors select {
+    padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit; outline: none; min-width: 200px;
+  }
+
+  /* ===== TABLE ===== */
+  .data-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--card-bg); border-radius: var(--radius);
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  .data-table thead th {
+    background: var(--accent-light); font-size: 12px; font-weight: 600;
+    color: var(--accent-dark); padding: 12px 12px; text-align: left;
+    border-bottom: 2px solid var(--accent);
+  }
+  .data-table tbody td {
+    padding: 10px 12px; font-size: 14px; border-bottom: 1px solid var(--border);
+  }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover { background: #FAFAF7; }
+
+  .diff-up { color: var(--success); font-weight: 600; }
+  .diff-down { color: var(--danger); font-weight: 600; }
+  .diff-same { color: var(--text-light); }
+
+  /* ===== LOW STOCK TABLE ===== */
+  .low-row { background: var(--danger-light); }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-bar {
+    width: 100%; height: 8px; background: var(--border);
+    border-radius: 4px; overflow: hidden; margin-top: 6px;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 4px; transition: width .3s;
+    background: var(--success);
+  }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: white;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    transition: transform .3s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 1000; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .loading { text-align: center; padding: 40px; color: var(--text-light); }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+  }
+  .back-link:hover { color: white; }
+
+  @media (max-width: 768px) {
+    .content { padding: 12px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .snapshot-card { flex-direction: column; align-items: flex-start; }
+    .compare-selectors select { min-width: 150px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h1>🔐 後台管理</h1>
+    <p>請輸入管理者密碼以進入後台</p>
+    <input type="password" class="login-input" id="loginPw" placeholder="密碼" autocomplete="off">
+    <div class="login-error" id="loginError">密碼錯誤</div>
+    <button class="login-btn" onclick="doLogin()">進入後台</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <a href="/index.html" class="back-link">← 回首頁</a>
+        <h1>📊 後台管理</h1>
+      </div>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="overview">總覽</button>
+    <button class="tab" data-panel="history">盤點歷史</button>
+    <button class="tab" data-panel="compare">差異比較</button>
+    <button class="tab" data-panel="alerts">低庫存警報</button>
+  </div>
+
+  <div class="content">
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="stats-grid" id="overviewStats"></div>
+      <h3 style="margin-bottom:12px;">最近盤點</h3>
+      <div id="recentSnapshots" class="snapshot-list"><div class="loading">載入中…</div></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="panel" id="panel-history">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <h3>所有盤點紀錄</h3>
+        <div style="display:flex; gap:8px;">
+          <select id="historyFilter" onchange="renderHistory()" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:13px;">
+            <option value="all">所有清單</option>
+            <option value="材料">材料</option>
+            <option value="代工_植物_動物">代工/植物/動物</option>
+            <option value="耗材">耗材</option>
+            <option value="棧板材料_自黏袋">棧板材料/自黏袋</option>
+          </select>
+        </div>
+      </div>
+      <div id="historyList" class="snapshot-list"><div class="loading">載入中…</div></div>
+    </div>
+
+    <!-- COMPARE -->
+    <div class="panel" id="panel-compare">
+      <div class="compare-selectors">
+        <div>
+          <label>快照 A（舊）</label>
+          <select id="compareA"></select>
+        </div>
+        <div>
+          <label>快照 B（新）</label>
+          <select id="compareB"></select>
+        </div>
+        <button class="btn-solid btn" style="color:var(--text);" onclick="runCompare()">比較差異</button>
+      </div>
+      <div id="compareResult"></div>
+    </div>
+
+    <!-- LOW STOCK ALERTS -->
+    <div class="panel" id="panel-alerts">
+      <h3 style="margin-bottom:16px;">⚠️ 低庫存品項警報</h3>
+      <p style="color:var(--text-light); font-size:14px; margin-bottom:16px;">以下為最近盤點中現有數量低於最低庫存的品項。</p>
+      <div id="alertsContent"><div class="loading">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ADMIN_PASSWORD = 'admin2024';
+const API_BASE = '';
+let snapshots = [];
+
+// ===== LOGIN =====
+document.getElementById('loginPw').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogin() {
+  const pw = document.getElementById('loginPw').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').classList.add('show');
+    initDashboard();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginPw').focus();
+  }
+}
+
+// ===== INIT =====
+async function initDashboard() {
+  updateDate();
+  setupTabs();
+  await loadSnapshots();
+  renderOverview();
+  renderHistory();
+  populateCompareSelectors();
+  renderAlerts();
+}
+
+function updateDate() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  const w = ['日','一','二','三','四','五','六'][now.getDay()];
+  document.getElementById('headerDate').textContent = `${y}/${m}/${d} (${w})`;
+}
+
+function setupTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+    });
+  });
+}
+
+async function api(endpoint, options = {}) {
+  const res = await fetch(API_BASE + '/api/' + endpoint, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  return res.json();
+}
+
+async function loadSnapshots() {
+  try {
+    const data = await api('snapshot');
+    if (data.success) {
+      snapshots = data.snapshots;
+    }
+  } catch (err) {
+    console.error('Load snapshots failed:', err);
+  }
+}
+
+// ===== OVERVIEW =====
+function renderOverview() {
+  const statsEl = document.getElementById('overviewStats');
+  const recentEl = document.getElementById('recentSnapshots');
+
+  const totalSnapshots = snapshots.length;
+  const lists = [...new Set(snapshots.map(s => s.list))];
+
+  // Latest snapshot per list
+  const latest = {};
+  snapshots.forEach(s => {
+    if (!latest[s.list] || s.date > latest[s.list].date) latest[s.list] = s;
+  });
+
+  let totalLow = 0;
+  let totalChecked = 0;
+  let totalItems = 0;
+  Object.values(latest).forEach(s => {
+    totalLow += s.lowStockCount;
+    totalChecked += s.checkedItems;
+    totalItems += s.totalItems;
+  });
+
+  const completionRate = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+
+  statsEl.innerHTML = `
+    <div class="stat-card">
+      <div class="label">總盤點次數</div>
+      <div class="value">${totalSnapshots}</div>
+      <div class="sub">${lists.length} 個清單有紀錄</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="label">低庫存品項</div>
+      <div class="value">${totalLow}</div>
+      <div class="sub">需要關注補貨</div>
+    </div>
+    <div class="stat-card success">
+      <div class="label">最近盤點完成率</div>
+      <div class="value">${completionRate}%</div>
+      <div class="sub">${totalChecked} / ${totalItems} 已點算</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${completionRate}%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">最近盤點</div>
+      <div class="value">${snapshots.length > 0 ? formatDate(snapshots[0].date) : '—'}</div>
+      <div class="sub">${snapshots.length > 0 ? snapshots[0].list : ''}</div>
+    </div>
+  `;
+
+  const recent = snapshots.slice(0, 5);
+  if (recent.length === 0) {
+    recentEl.innerHTML = '<div class="loading">尚無盤點紀錄</div>';
+    return;
+  }
+  recentEl.innerHTML = recent.map(s => snapshotCardHTML(s)).join('');
+}
+
+// ===== HISTORY =====
+function renderHistory() {
+  const filter = document.getElementById('historyFilter').value;
+  const filtered = filter === 'all' ? snapshots : snapshots.filter(s => s.list === filter);
+  const el = document.getElementById('historyList');
+
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="loading">沒有符合的紀錄</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(s => snapshotCardHTML(s)).join('');
+}
+
+function snapshotCardHTML(s) {
+  const rate = s.totalItems > 0 ? Math.round((s.checkedItems / s.totalItems) * 100) : 0;
+  const listLabels = {
+    '材料': '📦 材料',
+    '代工_植物_動物': '🔧 代工/植物/動物',
+    '耗材': '🧴 耗材',
+    '棧板材料_自黏袋': '🪵 棧板/自黏袋',
+  };
+  return `
+    <div class="snapshot-card">
+      <div class="snapshot-meta">
+        <div class="date">${formatDateTime(s.date)}</div>
+        <div class="info">
+          ${listLabels[s.list] || s.list}
+          · ${s.totalItems} 品項
+          · 已點 ${s.checkedItems}/${s.totalItems} (${rate}%)
+          ${s.lowStockCount > 0 ? `· <span style="color:var(--danger)">⚠ ${s.lowStockCount} 低庫存</span>` : ''}
+          ${s.operator ? `· 盤點人: ${esc(s.operator)}` : ''}
+        </div>
+      </div>
+      <div class="snapshot-actions">
+        <button class="btn-solid btn" style="color:var(--text);" onclick="exportSnapshot('${s.id}')">📥 下載</button>
+      </div>
+    </div>
+  `;
+}
+
+// ===== COMPARE =====
+function populateCompareSelectors() {
+  const html = snapshots.map(s =>
+    `<option value="${s.id}">${formatDateTime(s.date)} — ${s.list}</option>`
+  ).join('');
+  document.getElementById('compareA').innerHTML = html;
+  document.getElementById('compareB').innerHTML = html;
+}
+
+function runCompare() {
+  const idA = document.getElementById('compareA').value;
+  const idB = document.getElementById('compareB').value;
+  const snapA = snapshots.find(s => s.id === idA);
+  const snapB = snapshots.find(s => s.id === idB);
+  if (!snapA || !snapB || !snapA.data.length || !snapB.data.length) {
+    document.getElementById('compareResult').innerHTML = '<div class="loading">選擇的快照沒有詳細資料</div>';
+    return;
+  }
+
+  const mapA = new Map(snapA.data.map(i => [i.code, i]));
+  const mapB = new Map(snapB.data.map(i => [i.code, i]));
+  const allCodes = [...new Set([...mapA.keys(), ...mapB.keys()])].sort();
+
+  let rows = '';
+  let changes = 0;
+  allCodes.forEach(code => {
+    const a = mapA.get(code);
+    const b = mapB.get(code);
+    const qtyA = a ? a.qty : '—';
+    const qtyB = b ? b.qty : '—';
+    const name = (b || a).name;
+
+    if (a && b && a.qty !== b.qty) {
+      changes++;
+      const diff = b.qty - a.qty;
+      const cls = diff > 0 ? 'diff-up' : 'diff-down';
+      rows += `<tr><td>${esc(code)}</td><td>${esc(name)}</td><td>${qtyA}</td><td>${qtyB}</td><td class="${cls}">${diff > 0 ? '+' : ''}${diff}</td></tr>`;
+    } else if (!a) {
+      changes++;
+      rows += `<tr><td>${esc(code)}</td><td>${esc(name)}</td><td>—</td><td>${qtyB}</td><td class="diff-up">新增</td></tr>`;
+    } else if (!b) {
+      changes++;
+      rows += `<tr><td>${esc(code)}</td><td>${esc(name)}</td><td>${qtyA}</td><td>—</td><td class="diff-down">移除</td></tr>`;
+    }
+  });
+
+  if (changes === 0) {
+    document.getElementById('compareResult').innerHTML = '<div class="loading" style="color:var(--success)">✅ 兩次盤點結果完全一致</div>';
+    return;
+  }
+
+  document.getElementById('compareResult').innerHTML = `
+    <p style="margin-bottom:12px; color:var(--text-light); font-size:14px;">共 ${changes} 項差異</p>
+    <table class="data-table">
+      <thead><tr><th>編號</th><th>名稱</th><th>快照A</th><th>快照B</th><th>變化</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ===== ALERTS =====
+function renderAlerts() {
+  const el = document.getElementById('alertsContent');
+
+  // Get latest snapshot per list
+  const latest = {};
+  snapshots.forEach(s => {
+    if (s.data.length > 0 && (!latest[s.list] || s.date > latest[s.list].date)) latest[s.list] = s;
+  });
+
+  let allLow = [];
+  Object.entries(latest).forEach(([list, snap]) => {
+    snap.data.forEach(item => {
+      if (item.minStock > 0 && item.qty < item.minStock) {
+        allLow.push({ ...item, list });
+      }
+    });
+  });
+
+  if (allLow.length === 0) {
+    el.innerHTML = '<div class="loading" style="color:var(--success)">✅ 目前沒有低庫存品項</div>';
+    return;
+  }
+
+  allLow.sort((a, b) => (a.qty / a.minStock) - (b.qty / b.minStock));
+
+  let rows = allLow.map(item => `
+    <tr class="low-row">
+      <td>${esc(item.code)}</td>
+      <td>${esc(item.name)}</td>
+      <td>${esc(item.list)}</td>
+      <td style="font-weight:700; color:var(--danger);">${item.qty}</td>
+      <td>${item.minStock}</td>
+      <td>差 ${item.minStock - item.qty}</td>
+      <td>${esc(item.shortage || '—')}</td>
+    </tr>
+  `).join('');
+
+  el.innerHTML = `
+    <p style="margin-bottom:12px; color:var(--danger); font-weight:600;">共 ${allLow.length} 項需要補貨</p>
+    <table class="data-table">
+      <thead><tr><th>編號</th><th>名稱</th><th>清單</th><th>現有</th><th>最低</th><th>缺額</th><th>處理方式</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ===== EXPORT =====
+function exportSnapshot(id) {
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap || !snap.data.length) {
+    showToast('此快照沒有詳細資料可匯出');
+    return;
+  }
+
+  // Build CSV with BOM for Excel compatibility
+  const bom = '\uFEFF';
+  const header = ['編號','名稱','種類','現有數量','最低庫存','缺貨處理方式','備註','已點算'];
+  const rows = snap.data.map(i => [
+    i.code, i.name, i.category, i.qty, i.minStock,
+    i.shortage, i.note, i.checked ? '✓' : ''
+  ]);
+
+  const csv = bom + [header, ...rows].map(r =>
+    r.map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `盤點紀錄_${snap.list}_${formatDate(snap.date)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('已下載盤點紀錄');
+}
+
+// ===== HELPERS =====
+function formatDate(d) { return d ? d.slice(0, 10) : '—'; }
+function formatDateTime(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
+  const h = String(dt.getHours()).padStart(2,'0');
+  const min = String(dt.getMinutes()).padStart(2,'0');
+  return `${y}/${m}/${dd} ${h}:${min}`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

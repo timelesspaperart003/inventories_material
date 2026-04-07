@@ -20,8 +20,6 @@
     --danger-light: #F5E6E6;
     --success: #8D9B6A;
     --success-light: #EDF2E4;
-    --warn: #C9A96E;
-    --warn-light: #F8F0E0;
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
     --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
     --radius: 10px;
@@ -42,17 +40,17 @@
   .header {
     background: linear-gradient(135deg, #B0876E, #8E6A52);
     color: white;
-    padding: 28px 24px 22px;
+    padding: 24px 24px 18px;
     position: sticky;
     top: 0;
     z-index: 100;
     box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   }
-  .header-top {
+  .header-row1 {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   .header h1 {
     font-size: 22px;
@@ -61,6 +59,20 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-date {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.18);
+    padding: 4px 12px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
   }
   .sync-indicator {
     display: inline-flex;
@@ -161,7 +173,7 @@
   .btn-danger:hover { background: var(--danger-light); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* ===== LOADING OVERLAY ===== */
+  /* ===== LOADING ===== */
   .loading-overlay {
     position: fixed; inset: 0;
     background: rgba(245,242,238,0.85);
@@ -220,6 +232,7 @@
     border-bottom: 1px solid var(--border); vertical-align: middle;
   }
   tbody tr:last-child td { border-bottom: none; }
+  tbody td.center { text-align: center; }
 
   .code-cell { font-weight: 600; color: var(--accent-dark); font-size: 13px; white-space: nowrap; }
   .name-cell { font-weight: 500; }
@@ -237,8 +250,31 @@
     background: var(--bg); transition: border-color .2s, box-shadow .2s; outline: none;
   }
   .num-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #F0E6DD; }
-  .min-stock-input { background: var(--card-bg); border-style: dashed; }
-  .min-stock-input:focus { border-style: solid; }
+
+  .min-stock-cell {
+    position: relative;
+    cursor: pointer;
+  }
+  .min-stock-display {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    min-width: 64px;
+    text-align: center;
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .min-stock-display:hover { border-color: var(--accent); }
+  .min-stock-display .lock-icon {
+    font-size: 10px;
+    opacity: 0.4;
+  }
 
   .shortage-select {
     padding: 4px 6px; border: 1.5px solid var(--border);
@@ -332,10 +368,20 @@
   .modal p { color: var(--text-light); font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
   .modal-actions { display: flex; gap: 10px; justify-content: center; }
 
+  .modal-input {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 15px; font-family: inherit; text-align: center;
+    outline: none; margin-bottom: 16px;
+    letter-spacing: 2px;
+  }
+  .modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #F0E6DD; }
+  .modal-error { color: var(--danger); font-size: 13px; margin-top: -12px; margin-bottom: 12px; display: none; }
+
   .footer { text-align: center; padding: 20px; font-size: 12px; color: var(--text-light); }
 
   @media (max-width: 768px) {
-    .header { padding: 20px 16px 16px; }
+    .header { padding: 18px 16px 14px; }
     .header h1 { font-size: 18px; }
     .toolbar { padding: 10px 12px; }
     .table-wrap { padding: 10px 8px; }
@@ -344,6 +390,7 @@
     .num-input { width: 52px; font-size: 13px; }
     .shortage-select { font-size: 12px; min-width: 60px; }
     .header-stats { gap: 8px; font-size: 12px; }
+    .header-date { font-size: 12px; }
   }
 </style>
 </head>
@@ -357,11 +404,14 @@
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-top">
+  <div class="header-row1">
     <h1>🧴 耗材</h1>
-    <div class="sync-indicator" onclick="syncFromNotion()" title="點擊重新同步">
-      <div class="sync-dot" id="syncDot"></div>
-      <span id="syncLabel">已同步</span>
+    <div class="header-right">
+      <div class="header-date" id="headerDate"></div>
+      <div class="sync-indicator" onclick="syncFromNotion()" title="點擊重新同步">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">已同步</span>
+      </div>
     </div>
   </div>
   <div class="header-stats">
@@ -385,10 +435,27 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
     同步
   </button>
+  <button class="btn btn-accent" id="saveSnapshotBtn" onclick="saveSnapshot()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    儲存盤點結果
+  </button>
   <button class="btn btn-danger" onclick="showResetModal()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
     重置
   </button>
+</div>
+
+<!-- SAVE SNAPSHOT MODAL -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h3>📸 儲存盤點結果</h3>
+    <p>將目前的盤點狀態存為一份快照紀錄。</p>
+    <input type="text" class="modal-input" id="operatorInput" placeholder="盤點人姓名（選填）" style="letter-spacing:normal;">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSaveModal()">取消</button>
+      <button class="btn btn-accent" id="confirmSaveBtn" onclick="confirmSaveSnapshot()">儲存</button>
+    </div>
+  </div>
 </div>
 
 <!-- SUB TABS -->
@@ -471,6 +538,20 @@
   </div>
 </div>
 
+<!-- PASSWORD MODAL for min stock -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal">
+    <h3>🔒 修改最低庫存</h3>
+    <p>此欄位受密碼保護，請輸入密碼以解鎖修改。</p>
+    <input type="password" class="modal-input" id="pwInput" placeholder="請輸入密碼" autocomplete="off">
+    <div class="modal-error" id="pwError">密碼錯誤，請重試</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePwModal()">取消</button>
+      <button class="btn btn-accent" onclick="verifyPassword()">確認</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -480,16 +561,46 @@
 
 <script>
 // ===== CONFIG =====
-const API_BASE = '';  // same origin on Vercel, or set full URL
+const API_BASE = '';
 const LIST_KEY = '耗材';
 const SUB_CATS = null;
+const MIN_STOCK_PASSWORD = 'cons2026duck';
 
 let items = [];
 let filterLow = false;
 let searchTerm = '';
 let activeSubCat = 'all';
-let updateQueue = new Map(); // debounce updates
+let updateQueue = new Map();
 let updateTimers = new Map();
+let minStockUnlocked = false;
+let pendingMinStockIdx = null;
+
+// ===== DATE DISPLAY =====
+function updateDate() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  const w = weekdays[now.getDay()];
+  document.getElementById('headerDate').textContent = `${y}/${m}/${d} (${w})`;
+}
+
+// ===== SORT HELPER =====
+function sortByCode(arr) {
+  return arr.sort((a, b) => {
+    const re = /^([A-Za-z]*)(\d*)-?(\d*)$/;
+    const ma = a.code.match(re) || [a.code, a.code, '0', '0'];
+    const mb = b.code.match(re) || [b.code, b.code, '0', '0'];
+    if (ma[1] !== mb[1]) return ma[1].localeCompare(mb[1]);
+    const n1 = parseInt(ma[2]) || 0;
+    const n2 = parseInt(mb[2]) || 0;
+    if (n1 !== n2) return n1 - n2;
+    const s1 = parseInt(ma[3]) || 0;
+    const s2 = parseInt(mb[3]) || 0;
+    return s1 - s2;
+  });
+}
 
 // ===== API HELPERS =====
 async function api(endpoint, options = {}) {
@@ -507,9 +618,11 @@ function setSyncStatus(status, label) {
   lbl.textContent = label || (status === 'syncing' ? '同步中…' : status === 'error' ? '同步失敗' : '已同步');
 }
 
-// ===== INIT: Load from Notion =====
+// ===== INIT =====
 async function init() {
-  // Setup sub-tabs
+  updateDate();
+  setInterval(updateDate, 60000);
+
   if (SUB_CATS) {
     const tabsEl = document.getElementById('subTabs');
     tabsEl.style.display = 'flex';
@@ -527,6 +640,10 @@ async function init() {
     render();
   });
 
+  document.getElementById('pwInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') verifyPassword();
+  });
+
   await syncFromNotion();
 }
 
@@ -538,7 +655,7 @@ async function syncFromNotion() {
   try {
     const data = await api('items?list=' + LIST_KEY);
     if (data.success) {
-      items = data.items;
+      items = sortByCode(data.items);
       setSyncStatus('ok', `已同步 · ${items.length} 筆`);
       render();
     } else {
@@ -553,7 +670,7 @@ async function syncFromNotion() {
   }
 }
 
-// ===== DEBOUNCED UPDATE TO NOTION =====
+// ===== DEBOUNCED UPDATE =====
 function scheduleUpdate(pageId, field, value) {
   const key = pageId;
   if (!updateQueue.has(key)) updateQueue.set(key, {});
@@ -620,7 +737,10 @@ function render() {
           <input type="number" class="num-input" min="0" value="${item.qty}" onchange="setQty(${idx},this.value)">
         </td>
         <td class="center">
-          <input type="number" class="num-input min-stock-input" min="0" value="${item.minStock}" onchange="setMinStock(${idx},this.value)">
+          <div class="min-stock-display" onclick="requestMinStockEdit(${idx})">
+            ${item.minStock}
+            <span class="lock-icon">${minStockUnlocked ? '🔓' : '🔒'}</span>
+          </div>
           ${isLow ? '<div class="stock-warn">⚠ 低於安全量</div>' : ''}
         </td>
         <td>
@@ -642,7 +762,7 @@ function render() {
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
-// ===== ACTIONS (local + sync to Notion) =====
+// ===== ACTIONS =====
 function toggleCheck(idx) {
   items[idx].checked = !items[idx].checked;
   scheduleUpdate(items[idx].id, 'checked', items[idx].checked);
@@ -671,6 +791,46 @@ function setNote(idx, val) {
   scheduleUpdate(items[idx].id, 'note', val);
 }
 
+// ===== PASSWORD PROTECTION FOR MIN STOCK =====
+function requestMinStockEdit(idx) {
+  if (minStockUnlocked) {
+    const newVal = prompt('修改最低庫存（目前: ' + items[idx].minStock + '）', items[idx].minStock);
+    if (newVal !== null && !isNaN(parseInt(newVal))) {
+      setMinStock(idx, newVal);
+    }
+    return;
+  }
+  pendingMinStockIdx = idx;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+  document.getElementById('pwModal').classList.add('open');
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+
+function verifyPassword() {
+  const input = document.getElementById('pwInput').value;
+  if (input === MIN_STOCK_PASSWORD) {
+    minStockUnlocked = true;
+    closePwModal();
+    showToast('🔓 最低庫存已解鎖（本次會話有效）');
+    render();
+    if (pendingMinStockIdx !== null) {
+      const idx = pendingMinStockIdx;
+      pendingMinStockIdx = null;
+      setTimeout(() => requestMinStockEdit(idx), 200);
+    }
+  } else {
+    document.getElementById('pwError').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+function closePwModal() {
+  document.getElementById('pwModal').classList.remove('open');
+  pendingMinStockIdx = null;
+}
+
 function toggleLowFilter() {
   filterLow = !filterLow;
   document.getElementById('filterLowBtn').classList.toggle('active', filterLow);
@@ -694,7 +854,7 @@ function updateStats() {
   document.getElementById('stat-low').textContent = `低庫存: ${low}`;
 }
 
-// ===== ADD ITEM (create in Notion) =====
+// ===== ADD ITEM =====
 function toggleAddPanel() {
   const body = document.getElementById('addPanelBody');
   const arrow = document.getElementById('addArrow');
@@ -729,6 +889,7 @@ async function addItem() {
     });
     if (res.success) {
       items.push(res.item);
+      items = sortByCode(items);
       render();
       clearAddForm();
       showToast(`已新增 ${code} ${name} 到 Notion`);
@@ -750,7 +911,7 @@ function clearAddForm() {
   document.getElementById('addNote').value = '';
 }
 
-// ===== RESET (batch update in Notion) =====
+// ===== RESET =====
 function showResetModal() { document.getElementById('resetModal').classList.add('open'); }
 function closeResetModal() { document.getElementById('resetModal').classList.remove('open'); }
 
@@ -787,13 +948,48 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ===== AUTO REFRESH (poll Notion every 60s) =====
+// ===== SAVE SNAPSHOT =====
+function saveSnapshot() {
+  document.getElementById('operatorInput').value = '';
+  document.getElementById('saveModal').classList.add('open');
+  setTimeout(() => document.getElementById('operatorInput').focus(), 100);
+}
+function closeSaveModal() {
+  document.getElementById('saveModal').classList.remove('open');
+}
+async function confirmSaveSnapshot() {
+  const btn = document.getElementById('confirmSaveBtn');
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+
+  const operator = document.getElementById('operatorInput').value.trim();
+
+  try {
+    const res = await api('snapshot', {
+      method: 'POST',
+      body: JSON.stringify({ list: LIST_KEY, items, operator }),
+    });
+    if (res.success) {
+      showToast(`📸 盤點結果已儲存（${res.checkedItems}/${res.totalItems} 已點）`);
+    } else {
+      throw new Error(res.error);
+    }
+  } catch (err) {
+    showToast('儲存失敗: ' + (err.message || '未知錯誤'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '儲存';
+    closeSaveModal();
+  }
+}
+
+// ===== AUTO REFRESH =====
 setInterval(async () => {
-  if (updateQueue.size > 0) return; // skip if pending writes
+  if (updateQueue.size > 0) return;
   try {
     const data = await api('items?list=' + LIST_KEY);
     if (data.success) {
-      items = data.items;
+      items = sortByCode(data.items);
       render();
       setSyncStatus('ok', `已同步 · ${items.length} 筆`);
     }
